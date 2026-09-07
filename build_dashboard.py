@@ -73,10 +73,73 @@ def balls_html(whites, special, small=True):
     return spans
 
 
-def combos_js(cfg, draws):
-    picks = next_draw_picks(cfg, draws, seed=None)
+def combos_js(picks):
     rows = [{"s": name, "w": list(w), "sp": sp} for name, (w, sp) in picks.items()]
     return json.dumps(rows)
+
+
+def combos_text(picks, special_name):
+    lines = []
+    for name, (whites, sp) in picks.items():
+        ball_str = " ".join(f"{n:02d}" for n in whites)
+        lines.append(f"  {name:<32} {ball_str}  +  {special_name} {sp:02d}")
+    return "\n".join(lines)
+
+
+DASHBOARD_URL = "https://claude.ai/code/artifact/77e2ecf7-3a91-44b0-9015-0a1ca7f122b3"
+
+EMAIL_TEMPLATE = """Jackpot Ledger - daily numbers, {refresh_date}
+
+MEGA MILLIONS
+Next drawing: {mm_next_draw}
+Jackpot: {mm_jackpot} annuity / {mm_cash} cash
+EV per $5 ticket: {mm_ev}  (RTP {mm_rtp})
+Last drawing ({mm_last_date}): {mm_last_balls}
+
+10 combos for the next drawing (one per tested strategy):
+{mm_combo_lines}
+
+POWERBALL
+Next drawing: {pb_next_draw}
+Jackpot: {pb_jackpot} annuity / {pb_cash} cash
+EV per $2 ticket: {pb_ev}  (RTP {pb_rtp})
+Last drawing ({pb_last_date}): {pb_last_balls}
+
+10 combos for the next drawing (one per tested strategy):
+{pb_combo_lines}
+
+---
+Straight talk: a 120-minute, million-plus-trial validation run found that NONE of these
+strategies beat plain random number selection on a fair lottery draw - mathematically
+expected, and confirmed empirically. These 10 combos are provided for variety/entertainment
+only; every one of them has identical odds to any other 5-number pick. This is not a tip,
+a prediction, or advice to play.
+
+Full dashboard (live, refreshed daily): {dashboard_url}
+"""
+
+
+def build_email_body(values, mm_picks, pb_picks):
+    return EMAIL_TEMPLATE.format(
+        refresh_date=values["__REFRESH_DATE__"],
+        mm_next_draw=values["__MM_NEXT_DRAW__"],
+        mm_jackpot=values["__MM_JACKPOT__"],
+        mm_cash=values["__MM_CASH__"],
+        mm_ev=values["__MM_EV__"],
+        mm_rtp=values["__MM_RTP__"],
+        mm_last_date=values["__MM_LAST_DRAW_DATE__"],
+        mm_last_balls=values["_MM_LAST_DRAW_PLAIN"],
+        mm_combo_lines=combos_text(mm_picks, "Mega Ball"),
+        pb_next_draw=values["__PB_NEXT_DRAW__"],
+        pb_jackpot=values["__PB_JACKPOT__"],
+        pb_cash=values["__PB_CASH__"],
+        pb_ev=values["__PB_EV__"],
+        pb_rtp=values["__PB_RTP__"],
+        pb_last_date=values["__PB_LAST_DRAW_DATE__"],
+        pb_last_balls=values["_PB_LAST_DRAW_PLAIN"],
+        pb_combo_lines=combos_text(pb_picks, "Powerball"),
+        dashboard_url=DASHBOARD_URL,
+    )
 
 
 def main():
@@ -99,6 +162,11 @@ def main():
 
     mm_draws = load_draws(MM_CFG, since=MM_ERA_START)
     pb_draws = load_draws(PB_CFG, since=PB_ERA_START)
+    mm_picks = next_draw_picks(MM_CFG, mm_draws, seed=None)
+    pb_picks = next_draw_picks(PB_CFG, pb_draws, seed=None)
+
+    mm_last_plain = " ".join(f"{n:02d}" for n in mm_info["last_draw_numbers"]) + f"  +  MB {mm_info['last_draw_mega_ball']:02d}"
+    pb_last_plain = " ".join(f"{n:02d}" for n in pb_last["whites"]) + f"  +  PB {pb_last['powerball']:02d}"
 
     values = {
         "__MM_NEXT_DRAW__": f"{mm_next.strftime('%a %b')} {mm_next.day}, 11:00 PM ET" if mm_next else "TBD",
@@ -117,22 +185,31 @@ def main():
         "__PB_LAST_DRAW_DATE__": f"{pb_last_date_obj.strftime('%b')} {pb_last_date_obj.day}",
         "__PB_LAST_DRAW_BALLS__": balls_html(pb_last["whites"], pb_last["powerball"]),
 
-        "__MM_COMBOS_JS__": combos_js(MM_CFG, mm_draws),
-        "__PB_COMBOS_JS__": combos_js(PB_CFG, pb_draws),
+        "__MM_COMBOS_JS__": combos_js(mm_picks),
+        "__PB_COMBOS_JS__": combos_js(pb_picks),
 
         "__VALIDATION_DATE__": VALIDATION_DATE,
         "__REFRESH_DATE__": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+
+        "_MM_LAST_DRAW_PLAIN": mm_last_plain,
+        "_PB_LAST_DRAW_PLAIN": pb_last_plain,
     }
 
     template = (HERE / "dashboard_template.html").read_text(encoding="utf-8")
     for token, val in values.items():
+        if token.startswith("_MM_") or token.startswith("_PB_"):
+            continue  # email-only values, not template placeholders
         if token not in template:
             raise RuntimeError(f"Template missing expected placeholder: {token}")
         template = template.replace(token, val)
 
     out_path = HERE / "dashboard_output.html"
     out_path.write_text(template, encoding="utf-8")
-    print(f"\nWrote {out_path}")
+    print(f"Wrote {out_path}")
+
+    email_path = HERE / "email_body.txt"
+    email_path.write_text(build_email_body(values, mm_picks, pb_picks), encoding="utf-8")
+    print(f"Wrote {email_path}")
 
 
 if __name__ == "__main__":
