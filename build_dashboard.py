@@ -93,6 +93,25 @@ def track_record(game_name, ticket_price):
     return {"n": n, "hits": hits, "cost": cost, "prize": prize, "best_tier": best_tier}
 
 
+def last_drawing_results(game_name):
+    """Per-strategy breakdown of exactly what each combo would have won (or
+    not) on the most recently RESOLVED drawing for this game - the concrete,
+    per-drawing complement to track_record()'s running aggregate."""
+    if not PICKS_LOG_PATH.exists():
+        return None
+    rows = []
+    with open(PICKS_LOG_PATH, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row["game"] == game_name and row["status"] == "resolved":
+                rows.append(row)
+    if not rows:
+        return None
+    latest_date = max(r["drawing_date"] for r in rows)
+    latest_rows = [r for r in rows if r["drawing_date"] == latest_date]
+    latest_rows.sort(key=lambda r: -(int(r["prize"]) if r["prize"] else 0))
+    return {"drawing_date": latest_date, "rows": latest_rows}
+
+
 def load_cache():
     cache_path = HERE / "live_data_cache.json"
     if not cache_path.exists():
@@ -131,6 +150,35 @@ def combos_text(picks, special_name):
     return "\n".join(lines)
 
 
+def format_last_drawing_html(result):
+    if result is None:
+        return '<p class="none">No drawings resolved yet.</p>'
+    lines = [f'<p class="drawing-date">Drawing: {result["drawing_date"]}</p>', '<div class="result-list">']
+    for row in result["rows"]:
+        prize = int(row["prize"]) if row["prize"] else 0
+        outcome = f'${prize:,} ({row["tier"]})' if row["tier"] else "no prize"
+        cls = "hit" if row["tier"] else "miss"
+        lines.append(
+            f'<div class="result-row {cls}"><span class="strategy">{row["strategy"]}</span>'
+            f'<span class="matches">{row["white_matches"]} white + {"yes" if row["special_match"]=="1" else "no"} special</span>'
+            f'<span class="outcome">{outcome}</span></div>'
+        )
+    lines.append("</div>")
+    return "\n".join(lines)
+
+
+def format_last_drawing_text(result):
+    if result is None:
+        return "  No drawings resolved yet."
+    lines = [f'  Drawing: {result["drawing_date"]}']
+    for row in result["rows"]:
+        prize = int(row["prize"]) if row["prize"] else 0
+        outcome = f'WON ${prize:,} ({row["tier"]})' if row["tier"] else "no prize"
+        lines.append(f'    {row["strategy"]:<32} {row["white_matches"]} white + '
+                      f'{"yes" if row["special_match"]=="1" else "no":<3} special -> {outcome}')
+    return "\n".join(lines)
+
+
 DASHBOARD_URL = "https://claude.ai/code/artifact/77e2ecf7-3a91-44b0-9015-0a1ca7f122b3"
 
 EMAIL_TEMPLATE = """Jackpot Ledger - daily numbers, {refresh_date}
@@ -141,11 +189,14 @@ Jackpot: {mm_jackpot} annuity / {mm_cash} cash
 EV per $5 ticket: {mm_ev}  (RTP {mm_rtp})
 Last drawing ({mm_last_date}): {mm_last_balls}
 
-10 combos for the next drawing (one per tested strategy - locked in once generated,
+11 combos for the next drawing (one per tested strategy - locked in once generated,
 never regenerated, so these are the exact numbers being tracked against the result):
 {mm_combo_lines}
 
 Track record so far: {mm_track_record}
+
+What each combo would have won on the most recent resolved drawing:
+{mm_last_drawing}
 
 POWERBALL
 Next drawing: {pb_next_draw}
@@ -153,16 +204,19 @@ Jackpot: {pb_jackpot} annuity / {pb_cash} cash
 EV per $2 ticket: {pb_ev}  (RTP {pb_rtp})
 Last drawing ({pb_last_date}): {pb_last_balls}
 
-10 combos for the next drawing (one per tested strategy - locked in once generated,
+11 combos for the next drawing (one per tested strategy - locked in once generated,
 never regenerated, so these are the exact numbers being tracked against the result):
 {pb_combo_lines}
 
 Track record so far: {pb_track_record}
 
+What each combo would have won on the most recent resolved drawing:
+{pb_last_drawing}
+
 ---
 Straight talk: a 120-minute, million-plus-trial validation run found that NONE of these
 strategies beat plain random number selection on a fair lottery draw - mathematically
-expected, and confirmed empirically. These 10 combos are provided for variety/entertainment
+expected, and confirmed empirically. These 11 combos are provided for variety/entertainment
 only; every one of them has identical odds to any other 5-number pick. This is not a tip,
 a prediction, or advice to play. The track record above is tracked for transparency only -
 resolved outcomes are never fed back into how future picks are generated, because on an
@@ -184,6 +238,7 @@ def build_email_body(values, mm_picks, pb_picks):
         mm_last_balls=values["_MM_LAST_DRAW_PLAIN"],
         mm_combo_lines=combos_text(mm_picks, "Mega Ball"),
         mm_track_record=values["__MM_TRACK_RECORD__"],
+        mm_last_drawing=values["_MM_LAST_DRAWING_TEXT"],
         pb_next_draw=values["__PB_NEXT_DRAW__"],
         pb_jackpot=values["__PB_JACKPOT__"],
         pb_cash=values["__PB_CASH__"],
@@ -193,6 +248,7 @@ def build_email_body(values, mm_picks, pb_picks):
         pb_last_balls=values["_PB_LAST_DRAW_PLAIN"],
         pb_combo_lines=combos_text(pb_picks, "Powerball"),
         pb_track_record=values["__PB_TRACK_RECORD__"],
+        pb_last_drawing=values["_PB_LAST_DRAWING_TEXT"],
         dashboard_url=DASHBOARD_URL,
     )
 
@@ -220,6 +276,9 @@ def main():
 
     mm_track = track_record(MM_CFG.name, MM_CFG.ticket_price)
     pb_track = track_record(PB_CFG.name, PB_CFG.ticket_price)
+
+    mm_last_drawing = last_drawing_results(MM_CFG.name)
+    pb_last_drawing = last_drawing_results(PB_CFG.name)
 
     mm_last_plain = " ".join(f"{n:02d}" for n in mm_info["last_draw_numbers"]) + f"  +  MB {mm_info['last_draw_mega_ball']:02d}"
     pb_last_plain = " ".join(f"{n:02d}" for n in pb_last["whites"]) + f"  +  PB {pb_last['powerball']:02d}"
@@ -250,8 +309,13 @@ def main():
         "__MM_TRACK_RECORD__": format_track_record(mm_track, "Mega Ball"),
         "__PB_TRACK_RECORD__": format_track_record(pb_track, "Powerball"),
 
+        "__MM_LAST_DRAWING_HTML__": format_last_drawing_html(mm_last_drawing),
+        "__PB_LAST_DRAWING_HTML__": format_last_drawing_html(pb_last_drawing),
+
         "_MM_LAST_DRAW_PLAIN": mm_last_plain,
         "_PB_LAST_DRAW_PLAIN": pb_last_plain,
+        "_MM_LAST_DRAWING_TEXT": format_last_drawing_text(mm_last_drawing),
+        "_PB_LAST_DRAWING_TEXT": format_last_drawing_text(pb_last_drawing),
     }
 
     template = (HERE / "dashboard_template.html").read_text(encoding="utf-8")

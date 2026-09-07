@@ -162,13 +162,32 @@
     display:flex; flex-wrap:wrap; gap:6px 18px; padding:16px 4px 0; color:var(--ink-faint);
     font-size:11.5px; font-family:var(--font-mono); border-top:1px solid var(--edge); margin-top:4px;
   }
+
+  /* ---- last-drawing results ---- */
+  .results-body{padding:6px 18px 14px;}
+  .results-body .none{padding:12px 0; color:var(--ink-faint); font-size:12.5px;}
+  .results-body .drawing-date{
+    font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin:8px 0 4px;
+  }
+  .result-list{display:flex; flex-direction:column;}
+  .result-row{
+    display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:10px;
+    padding:7px 0; border-top:1px solid var(--edge); font-size:12px;
+  }
+  .result-row .strategy{color:var(--ink-muted);}
+  .result-row .matches{font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); white-space:nowrap;}
+  .result-row .outcome{
+    font-family:var(--font-mono); font-weight:600; font-size:12px; text-align:right; white-space:nowrap;
+  }
+  .result-row.miss .outcome{color:var(--ink-faint); font-weight:400;}
+  .result-row.hit .outcome{color:var(--good);}
 </style>
 
 <div class="wrap">
   <header class="page">
-    <div class="eyebrow">Live jackpots Β· 10 methodologies backtested per game Β· 2h validation run</div>
+    <div class="eyebrow">Live jackpots Β· 11 methodologies tracked per game Β· 2h validation run</div>
     <h1>Jackpot Ledger</h1>
-    <p class="sub">Every number here is either pulled live from the official game feeds or produced by one of ten number-selection strategies walk-forward tested against real draw history β€” never hand-picked.</p>
+    <p class="sub">Every number here is either pulled live from the official game feeds or produced by one of eleven number-selection strategies walk-forward tested against real draw history β€” never hand-picked.</p>
   </header>
 
   <section class="tickets">
@@ -257,7 +276,25 @@
     <div class="body">
       <p><strong>Mega Millions</strong> β€” __MM_TRACK_RECORD__</p>
       <p><strong>Powerball</strong> β€” __PB_TRACK_RECORD__</p>
-      <p>Tracked for transparency only. Resolved results are never fed back into how future picks are generated β€” on an independent random draw there is nothing real to learn from a past hit or miss (that's exactly what the deep-search validation above tested and confirmed).</p>
+      <p>Tracked for transparency, not to inform future picks β€” ten of the eleven strategies never read this back at all; only "adaptive feedback" does (by design, see above), and its own results are counted in these same totals on equal footing with everyone else's.</p>
+    </div>
+  </section>
+
+  <div class="board-head">
+    <h2>Most Recent Drawing β€” What Each Combo Would Have Won</h2>
+    <div class="note">real prize amounts if that combo had actually been played</div>
+  </div>
+
+  <section class="boards results">
+    <div class="board mm">
+      <div class="strip"></div>
+      <div class="board-title"><h3>Mega Millions</h3></div>
+      <div class="results-body">__MM_LAST_DRAWING_HTML__</div>
+    </div>
+    <div class="board pb">
+      <div class="strip"></div>
+      <div class="board-title"><h3>Powerball</h3></div>
+      <div class="results-body">__PB_LAST_DRAWING_HTML__</div>
     </div>
   </section>
 
