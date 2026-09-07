@@ -1,0 +1,354 @@
+<title>Jackpot Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#F5F6F9; --surface:#FFFFFF; --surface-raised:#ECEFF4; --edge:#D8DCE6;
+    --ink:#1B2233; --ink-muted:#5B6478; --ink-faint:#8B93A8;
+    --accent:#A97A1F; --accent-ink:#3A2C0C; --accent-soft:#F2E6C9;
+    --good:#2E7D4F; --good-soft:#DFF0E5;
+    --bad:#B14B48; --bad-soft:#F6E1DF;
+    --ball:#FFFFFF; --ball-edge:#C7CCD8; --ball-shadow:rgba(20,25,40,.10);
+    --mm-accent:#7A4FB5; --pb-accent:#2C6FB0;
+    --font-display:'Big Shoulders Display', system-ui, sans-serif;
+    --font-body:'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0F1420; --surface:#171E2E; --surface-raised:#1E2740; --edge:#2B3550;
+      --ink:#E8EAF0; --ink-muted:#9BA3B8; --ink-faint:#6B7488;
+      --accent:#D9A441; --accent-ink:#1C1608; --accent-soft:#332A14;
+      --good:#5BAE7E; --good-soft:#1B2E22;
+      --bad:#DD8783; --bad-soft:#2E1E1D;
+      --ball:#1E2740; --ball-edge:#3A4560; --ball-shadow:rgba(0,0,0,.35);
+      --mm-accent:#A98CDD; --pb-accent:#6FA8DE;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0F1420; --surface:#171E2E; --surface-raised:#1E2740; --edge:#2B3550;
+    --ink:#E8EAF0; --ink-muted:#9BA3B8; --ink-faint:#6B7488;
+    --accent:#D9A441; --accent-ink:#1C1608; --accent-soft:#332A14;
+    --good:#5BAE7E; --good-soft:#1B2E22;
+    --bad:#DD8783; --bad-soft:#2E1E1D;
+    --ball:#1E2740; --ball-edge:#3A4560; --ball-shadow:rgba(0,0,0,.35);
+    --mm-accent:#A98CDD; --pb-accent:#6FA8DE;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--ground); color:var(--ink); font-family:var(--font-body);
+    font-size:15px; line-height:1.5; padding:28px 20px 64px;
+  }
+  .wrap{max-width:1120px; margin:0 auto; display:flex; flex-direction:column; gap:22px;}
+
+  header.page{display:flex; flex-direction:column; gap:4px;}
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-faint);
+  }
+  h1{
+    font-family:var(--font-display); font-weight:900; font-size:clamp(32px,5vw,46px);
+    line-height:1; margin:2px 0 2px; text-wrap:balance; letter-spacing:.005em;
+  }
+  .sub{color:var(--ink-muted); font-size:14px; max-width:62ch;}
+
+  .tickets{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:760px){ .tickets{grid-template-columns:1fr;} }
+  .ticket{
+    background:var(--surface); border:1px solid var(--edge); border-radius:14px;
+    padding:20px 22px; display:flex; flex-direction:column; gap:14px; position:relative; overflow:hidden;
+  }
+  .ticket::before{
+    content:""; position:absolute; inset:0 0 auto 0; height:4px;
+  }
+  .ticket.mm::before{background:var(--mm-accent);}
+  .ticket.pb::before{background:var(--pb-accent);}
+  .ticket-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .game-name{font-family:var(--font-display); font-weight:800; font-size:24px; letter-spacing:.01em;}
+  .ticket.mm .game-name{color:var(--mm-accent);}
+  .ticket.pb .game-name{color:var(--pb-accent);}
+  .next-draw{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); text-align:right;}
+  .next-draw b{color:var(--ink); font-weight:600;}
+
+  .jackpot-row{display:flex; align-items:flex-end; gap:8px;}
+  .jackpot-figure{font-family:var(--font-mono); font-weight:600; font-size:clamp(28px,4vw,36px); font-variant-numeric:tabular-nums; letter-spacing:-.01em;}
+  .jackpot-label{font-size:12px; color:var(--ink-faint); padding-bottom:5px;}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding-top:2px;}
+  @media (max-width:520px){ .stat-grid{grid-template-columns:repeat(2,1fr);} }
+  .stat{
+    background:var(--surface-raised); border:1px solid var(--edge); border-radius:9px;
+    padding:9px 10px; display:flex; flex-direction:column; gap:2px;
+  }
+  .stat .k{font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.06em;}
+  .stat .v{font-family:var(--font-mono); font-weight:600; font-size:14.5px; font-variant-numeric:tabular-nums;}
+  .stat .v.rtp-low{color:var(--bad);}
+
+  .last-draw{
+    display:flex; align-items:center; gap:8px; padding-top:2px; flex-wrap:wrap;
+  }
+  .last-draw .lbl{font-size:11.5px; color:var(--ink-faint); margin-right:2px;}
+
+  .ball{
+    width:30px; height:30px; border-radius:50%; background:var(--ball); border:1px solid var(--ball-edge);
+    display:inline-flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:600; font-size:13px; font-variant-numeric:tabular-nums;
+    box-shadow:0 1px 2px var(--ball-shadow); flex:none;
+  }
+  .ball.special{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+  .ball.small{width:24px; height:24px; font-size:11px;}
+
+  .verdict{
+    background:var(--surface); border:1px solid var(--edge); border-radius:14px; padding:18px 22px;
+    display:flex; gap:16px; align-items:flex-start;
+  }
+  .verdict .mark{
+    font-family:var(--font-display); font-weight:900; font-size:15px; letter-spacing:.02em;
+    background:var(--good-soft); color:var(--good); border-radius:7px; padding:5px 10px; flex:none;
+    white-space:nowrap;
+  }
+  .verdict .body p{margin:0 0 8px; color:var(--ink-muted); font-size:13.5px;}
+  .verdict .body p:last-child{margin-bottom:0;}
+  .verdict .body strong{color:var(--ink); font-weight:600;}
+  .verdict .body .fixed{
+    background:var(--bad-soft); color:var(--bad); border-radius:6px; padding:1px 6px; font-weight:600;
+    font-family:var(--font-mono); font-size:12px;
+  }
+
+  .board-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-top:6px;}
+  .board-head h2{font-family:var(--font-display); font-weight:800; font-size:22px; margin:0;}
+  .board-head .note{font-size:12px; color:var(--ink-faint); font-family:var(--font-mono);}
+
+  .boards{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:820px){ .boards{grid-template-columns:1fr;} }
+
+  .board{
+    background:var(--surface); border:1px solid var(--edge); border-radius:14px; overflow:hidden;
+  }
+  .board .strip{height:4px;}
+  .board.mm .strip{background:var(--mm-accent);}
+  .board.pb .strip{background:var(--pb-accent);}
+  .board-title{
+    display:flex; justify-content:space-between; align-items:baseline; padding:14px 18px 10px;
+  }
+  .board-title h3{font-family:var(--font-display); font-weight:800; font-size:19px; margin:0;}
+  .board.mm h3{color:var(--mm-accent);}
+  .board.pb h3{color:var(--pb-accent);}
+  .board-title .odds{font-family:var(--font-mono); font-size:11px; color:var(--ink-faint);}
+
+  .combo-list{display:flex; flex-direction:column;}
+  .combo-row{
+    display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px;
+    padding:9px 18px; border-top:1px solid var(--edge);
+  }
+  .combo-row .strategy{font-size:11.5px; color:var(--ink-muted);}
+  .combo-row .balls{display:flex; gap:5px; align-items:center; flex-wrap:wrap; justify-content:flex-end;}
+  .combo-row .plus{color:var(--ink-faint); font-size:12px; margin:0 1px;}
+
+  .chart-wrap{padding:16px 18px 18px; border-top:1px solid var(--edge);}
+  .chart-title{font-size:11.5px; color:var(--ink-faint); margin-bottom:8px; font-family:var(--font-mono); letter-spacing:.02em;}
+  svg text{font-family:var(--font-mono); fill:var(--ink-muted);}
+  svg .bar{fill:var(--ink-faint); opacity:.55;}
+  .board.mm svg .bar{fill:var(--mm-accent);}
+  .board.pb svg .bar{fill:var(--pb-accent);}
+  svg .theo-line{stroke:var(--accent); stroke-width:1.4; stroke-dasharray:3 3;}
+  svg .name{font-size:9.5px;}
+  svg .name.hi{fill:var(--ink);}
+
+  footer{
+    display:flex; flex-wrap:wrap; gap:6px 18px; padding:16px 4px 0; color:var(--ink-faint);
+    font-size:11.5px; font-family:var(--font-mono); border-top:1px solid var(--edge); margin-top:4px;
+  }
+</style>
+
+<div class="wrap">
+  <header class="page">
+    <div class="eyebrow">Live jackpots Β· 10 methodologies backtested per game Β· 2h validation run</div>
+    <h1>Jackpot Ledger</h1>
+    <p class="sub">Every number here is either pulled live from the official game feeds or produced by one of ten number-selection strategies walk-forward tested against real draw history β€” never hand-picked.</p>
+  </header>
+
+  <section class="tickets">
+    <div class="ticket mm">
+      <div class="ticket-head">
+        <div class="game-name">Mega Millions</div>
+        <div class="next-draw">Next draw <b>Tue Sep 8, 11:00 PM ET</b></div>
+      </div>
+      <div class="jackpot-row">
+        <div class="jackpot-figure">$193,000,000</div>
+        <div class="jackpot-label">annuity Β· $82.8M cash</div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><div class="k">Odds (jackpot)</div><div class="v">1 in 290.5M</div></div>
+        <div class="stat"><div class="k">Ticket</div><div class="v">$5</div></div>
+        <div class="stat"><div class="k">EV / ticket</div><div class="v">$1.78</div></div>
+        <div class="stat"><div class="k">RTP</div><div class="v rtp-low">35.7%</div></div>
+      </div>
+      <div class="last-draw">
+        <span class="lbl">Last draw Β· Sep 4</span>
+        <span class="ball small">06</span><span class="ball small">26</span><span class="ball small">34</span><span class="ball small">59</span><span class="ball small">61</span><span class="ball small special">24</span>
+      </div>
+    </div>
+
+    <div class="ticket pb">
+      <div class="ticket-head">
+        <div class="game-name">Powerball</div>
+        <div class="next-draw">Next draw <b>Mon Sep 7, 10:59 PM ET</b></div>
+      </div>
+      <div class="jackpot-row">
+        <div class="jackpot-figure">$190,000,000</div>
+        <div class="jackpot-label">annuity Β· $81.9M cash</div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><div class="k">Odds (jackpot)</div><div class="v">1 in 292.2M</div></div>
+        <div class="stat"><div class="k">Ticket</div><div class="v">$2 (+$1 PP)</div></div>
+        <div class="stat"><div class="k">EV / ticket</div><div class="v">$0.97</div></div>
+        <div class="stat"><div class="k">RTP</div><div class="v rtp-low">48.5%</div></div>
+      </div>
+      <div class="last-draw">
+        <span class="lbl">Last draw Β· Sep 5</span>
+        <span class="ball small">15</span><span class="ball small">40</span><span class="ball small">47</span><span class="ball small">53</span><span class="ball small">59</span><span class="ball small special">09</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="verdict">
+    <div class="mark">NO EDGE FOUND</div>
+    <div class="body">
+      <p><strong>120.07-minute deep search, both games, 10 strategies each</strong> (random, hot-full-history, hot-last-26-draws, cold/overdue, frequency-weighted, sum-range, odd/even balance, high/low balance, no-consecutive, pair co-occurrence) β€” 819 repeated-seed passes against real history plus 819 large-N synthetic validation passes per game, up to 1.1M scored trials per strategy.</p>
+      <p><strong>Synthetic validation (the trustworthy test, genuinely unseen draws):</strong> Powerball β€” all 10 strategies' confidence intervals contain the theoretical win rate, zero exceptions. Mega Millions β€” 9 of 10 do; the lone flag is plain random itself, exactly the ~1-in-20 false positive expected from 20 comparisons at 95% confidence, not a real anomaly.</p>
+      <p>The real-history leaderboard nominally ranks <span class="fixed">hot numbers, last 26 draws</span> highest β€” that ranking is a measurement artifact, not a finding: it's a deterministic strategy re-scored 819 times against the same ~118β€“1,373 outcomes, which inflates its apparent sample size without adding real evidence. Corrected for that, no strategy beats a plain quick pick. (This validation ran once, 2026-09-07; the combo picks below refresh daily, the statistical verdict does not need to.)</p>
+    </div>
+  </section>
+
+  <div class="board-head">
+    <h2>Next-Drawing Combo Board</h2>
+    <div class="note">one pick per tested strategy Β· equal odds, no ranking implied Β· refreshed 2026-09-07</div>
+  </div>
+
+  <section class="boards">
+    <div class="board mm">
+      <div class="strip"></div>
+      <div class="board-title"><h3>Mega Millions</h3><div class="odds">5 of 1–70 + Mega Ball 1–24</div></div>
+      <div class="combo-list" id="mm-list"></div>
+      <div class="chart-wrap">
+        <div class="chart-title">Synthetic win rate vs. theoretical constant (4.334%) Β· n=180,180 each Β· from the one-time validation run</div>
+        <svg id="mm-chart" viewBox="0 0 480 200" width="100%" height="200"></svg>
+      </div>
+    </div>
+
+    <div class="board pb">
+      <div class="strip"></div>
+      <div class="board-title"><h3>Powerball</h3><div class="odds">5 of 1–69 + Powerball 1–26</div></div>
+      <div class="combo-list" id="pb-list"></div>
+      <div class="chart-wrap">
+        <div class="chart-title">Synthetic win rate vs. theoretical constant (4.021%) Β· n=180,180 each Β· from the one-time validation run</div>
+        <svg id="pb-chart" viewBox="0 0 480 200" width="100%" height="200"></svg>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Sources: megamillions.com live feed Β· Texas Lottery Β· NY Open Data (data.ny.gov)</span>
+    <span>Figures pre-tax</span>
+    <span>Draw history validated 2002/2010 β†’ present, cross-checked across two official feeds</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const mmCombos = [{"s": "random (quick-pick baseline)", "w": [4, 15, 21, 27, 60], "sp": 19}, {"s": "hot numbers (full history)", "w": [18, 40, 42, 49, 63], "sp": 12}, {"s": "hot numbers (last 26 draws)", "w": [5, 26, 30, 48, 51], "sp": 12}, {"s": "cold / overdue numbers", "w": [3, 7, 28, 29, 67], "sp": 15}, {"s": "frequency-weighted", "w": [2, 3, 19, 30, 66], "sp": 2}, {"s": "sum-range targeting", "w": [18, 25, 34, 40, 64], "sp": 13}, {"s": "odd/even balance", "w": [4, 10, 39, 43, 56], "sp": 12}, {"s": "high/low balance", "w": [3, 22, 28, 36, 53], "sp": 13}, {"s": "no consecutive numbers", "w": [17, 26, 42, 56, 68], "sp": 1}, {"s": "pair co-occurrence", "w": [18, 40, 42, 49, 63], "sp": 12}];
+  const pbCombos = [{"s": "random (quick-pick baseline)", "w": [13, 37, 44, 55, 67], "sp": 24}, {"s": "hot numbers (full history)", "w": [21, 27, 28, 61, 64], "sp": 14}, {"s": "hot numbers (last 26 draws)", "w": [5, 8, 29, 58, 59], "sp": 2}, {"s": "cold / overdue numbers", "w": [13, 26, 34, 46, 49], "sp": 16}, {"s": "frequency-weighted", "w": [8, 14, 33, 41, 44], "sp": 21}, {"s": "sum-range targeting", "w": [1, 2, 42, 49, 65], "sp": 25}, {"s": "odd/even balance", "w": [3, 27, 33, 42, 44], "sp": 22}, {"s": "high/low balance", "w": [3, 15, 39, 55, 64], "sp": 18}, {"s": "no consecutive numbers", "w": [26, 34, 45, 47, 56], "sp": 19}, {"s": "pair co-occurrence", "w": [21, 27, 28, 61, 64], "sp": 14}];
+
+  function pad(n){ return n < 10 ? "0"+n : ""+n; }
+
+  function renderList(elId, combos){
+    const el = document.getElementById(elId);
+    combos.forEach(c => {
+      const row = document.createElement("div");
+      row.className = "combo-row";
+      const balls = c.w.map(n => `<span class="ball">${pad(n)}</span>`).join("");
+      row.innerHTML = `<div class="strategy">${c.s}</div>
+        <div class="balls">${balls}<span class="plus">+</span><span class="ball special">${pad(c.sp)}</span></div>`;
+      el.appendChild(row);
+    });
+  }
+  renderList("mm-list", mmCombos);
+  renderList("pb-list", pbCombos);
+
+  function renderChart(svgId, rows, theo){
+    const svg = document.getElementById(svgId);
+    const W = 480, H = 200, left = 150, right = 20, top = 6, rowH = 18;
+    const maxV = Math.max(theo, ...rows.map(r => r.v)) * 1.15;
+    const x = v => left + (v / maxV) * (W - left - right);
+    let svgNS = "http://www.w3.org/2000/svg";
+    rows.forEach((r, i) => {
+      const y = top + i * rowH;
+      const label = document.createElementNS(svgNS, "text");
+      label.setAttribute("x", left - 8);
+      label.setAttribute("y", y + rowH * 0.62);
+      label.setAttribute("text-anchor", "end");
+      label.setAttribute("class", "name" + (r.name.indexOf("random") === 0 ? " hi" : ""));
+      label.textContent = r.name;
+      svg.appendChild(label);
+
+      const bar = document.createElementNS(svgNS, "rect");
+      bar.setAttribute("x", left);
+      bar.setAttribute("y", y + 2);
+      bar.setAttribute("width", Math.max(0, x(r.v) - left));
+      bar.setAttribute("height", rowH - 6);
+      bar.setAttribute("rx", 2);
+      bar.setAttribute("class", "bar");
+      svg.appendChild(bar);
+
+      const val = document.createElementNS(svgNS, "text");
+      val.setAttribute("x", Math.max(0, x(r.v)) + 5);
+      val.setAttribute("y", y + rowH * 0.62);
+      val.setAttribute("class", "name");
+      val.textContent = r.v.toFixed(2) + "%";
+      svg.appendChild(val);
+    });
+    const lineX = x(theo);
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", lineX); line.setAttribute("x2", lineX);
+    line.setAttribute("y1", 0); line.setAttribute("y2", top + rows.length * rowH - 4);
+    line.setAttribute("class", "theo-line");
+    svg.appendChild(line);
+    const lineLabel = document.createElementNS(svgNS, "text");
+    lineLabel.setAttribute("x", lineX + 3);
+    lineLabel.setAttribute("y", top + rows.length * rowH);
+    lineLabel.setAttribute("class", "name hi");
+    lineLabel.textContent = "theoretical " + theo.toFixed(3) + "%";
+    svg.appendChild(lineLabel);
+    svg.setAttribute("viewBox", `0 0 ${W} ${top + rows.length * rowH + 14}`);
+  }
+
+  renderChart("mm-chart", [
+    {name:"random (quick-pick)", v:4.429},
+    {name:"cold / overdue", v:4.386},
+    {name:"odd/even balance", v:4.384},
+    {name:"no consecutive", v:4.348},
+    {name:"frequency-weighted", v:4.331},
+    {name:"hot (full history)", v:4.313},
+    {name:"pair co-occurrence", v:4.313},
+    {name:"sum-range", v:4.310},
+    {name:"hot (last 26)", v:4.264},
+    {name:"high/low balance", v:4.258},
+  ], 4.334);
+
+  renderChart("pb-chart", [
+    {name:"cold / overdue", v:4.070},
+    {name:"hot (full history)", v:4.039},
+    {name:"pair co-occurrence", v:4.039},
+    {name:"no consecutive", v:4.038},
+    {name:"hot (last 26)", v:4.022},
+    {name:"frequency-weighted", v:4.019},
+    {name:"high/low balance", v:4.018},
+    {name:"random (quick-pick)", v:4.001},
+    {name:"odd/even balance", v:3.985},
+    {name:"sum-range", v:3.936},
+  ], 4.021);
+})();
+</script>
