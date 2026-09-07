@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+dashboard_output.html
+email_body.txt
