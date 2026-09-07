@@ -209,6 +209,38 @@ def strat_pair_frequency(cfg, history, rng):
     return tuple(sorted(whites)), special
 
 
+# ---- adaptive feedback strategy ----
+# Real, working feedback loop - but on the METHOD, not the numbers. When one
+# of our own past picks hits a prize tier, what should carry forward isn't
+# "those specific numbers were lucky" (that's the per-number version, and
+# it's exactly what "hot numbers" already is) - it's "that METHOD produced a
+# hit." So this strategy tracks each of the other ten strategies' own
+# real hit rate so far (from picks_log.csv's resolved rows) and, each time,
+# simply becomes a clone of whichever one currently has the best track
+# record: it calls that strategy's own function and returns its pick.
+#
+# It's tracked on exactly equal footing with the other ten, never singled
+# out or favored in the dashboard/email, specifically so this claim keeps
+# getting checked against live results instead of just asserted once and
+# left alone. The current leader is supplied by the caller via
+# set_feedback_best_strategy() (computed from picks_log.csv's resolved rows
+# in this project); backtest/deep-search callers that never call it get a
+# plain-random fallback, which is the honest default when there's no real
+# track record yet to follow.
+_FEEDBACK_BEST_STRATEGY = {}
+
+
+def set_feedback_best_strategy(game_name, strategy_name):
+    _FEEDBACK_BEST_STRATEGY[game_name] = strategy_name
+
+
+def strat_adaptive_feedback(cfg, history, rng):
+    best_name = _FEEDBACK_BEST_STRATEGY.get(cfg.name)
+    if best_name and best_name in STRATEGIES:
+        return STRATEGIES[best_name](cfg, history, rng)
+    return strat_random(cfg, history, rng)
+
+
 STRATEGIES = {
     "random (quick-pick baseline)": strat_random,
     "hot numbers (full history)": strat_hot,
@@ -220,6 +252,7 @@ STRATEGIES = {
     "high/low balance": strat_high_low_balance,
     "no consecutive numbers": strat_no_consecutive,
     "pair co-occurrence": strat_pair_frequency,
+    "adaptive feedback (own hit history)": strat_adaptive_feedback,
 }
 
 
