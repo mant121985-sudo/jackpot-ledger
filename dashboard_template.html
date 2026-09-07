@@ -116,6 +116,7 @@
     background:var(--bad-soft); color:var(--bad); border-radius:6px; padding:1px 6px; font-weight:600;
     font-family:var(--font-mono); font-size:12px;
   }
+  .verdict .mark.track-mark{background:var(--accent-soft); color:var(--accent);}
 
   .board-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-top:6px;}
   .board-head h2{font-family:var(--font-display); font-weight:800; font-size:22px; margin:0;}
@@ -247,6 +248,15 @@
         <div class="chart-title">Synthetic win rate vs. theoretical constant (4.021%) Β· n=180,180 each Β· from the one-time validation run</div>
         <svg id="pb-chart" viewBox="0 0 480 200" width="100%" height="200"></svg>
       </div>
+    </div>
+  </section>
+
+  <section class="verdict track">
+    <div class="mark track-mark">TRACK RECORD</div>
+    <div class="body">
+      <p><strong>Mega Millions</strong> β€” __MM_TRACK_RECORD__</p>
+      <p><strong>Powerball</strong> β€” __PB_TRACK_RECORD__</p>
+      <p>Tracked for transparency only. Resolved results are never fed back into how future picks are generated β€” on an independent random draw there is nothing real to learn from a past hit or miss (that's exactly what the deep-search validation above tested and confirmed).</p>
     </div>
   </section>
 

@@ -27,10 +27,13 @@ jobs:
           python refresh_powerball_history.py
           python fetch_live_data.py
 
+      - name: Resolve past picks and lock in the next drawing's picks
+        run: python update_picks_log.py
+
       - name: Commit and push if anything changed
         run: |
           git config user.name "jackpot-ledger-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add megamillions_draw_history_validated.csv powerball_draw_history_validated.csv live_data_cache.json
+          git add megamillions_draw_history_validated.csv powerball_draw_history_validated.csv live_data_cache.json picks_log.csv
           git diff --cached --quiet || git commit -m "Automated daily data refresh"
           git push

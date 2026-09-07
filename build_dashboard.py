@@ -13,12 +13,15 @@ inside whatever environment runs this script.
 
 Steps:
   1. Load live jackpot/EV/last-draw data from live_data_cache.json.
-  2. Generate one next-drawing combo per tested strategy, both games, from the
-     (already-fresh) draw-history CSVs.
-  3. Fill dashboard_template.html and write dashboard_output.html + email_body.txt.
+  2. Read this drawing's already-locked-in combo picks from picks_log.csv
+     (written by update_picks_log.py - never regenerated here, so re-running
+     this script can't produce different numbers for the same drawing).
+  3. Compute the running track-record tally from picks_log.csv's resolved rows.
+  4. Fill dashboard_template.html and write dashboard_output.html + email_body.txt.
 
 Run: python build_dashboard.py
 """
+import csv
 import json
 import sys
 from datetime import date, datetime, timezone
@@ -29,29 +32,65 @@ sys.path.insert(0, str(HERE))
 
 import megamillions_live_ev as mm
 import powerball_live_ev as pb
-from lottery_common import GameConfig, Tier, load_draws, next_draw_picks
+from game_configs import MM_CFG, PB_CFG, MM_ERA_START, PB_ERA_START
 
-MM_CFG = GameConfig(
-    name="Mega Millions", csv_path=str(HERE / "megamillions_draw_history_validated.csv"),
-    white_max=70, white_count=5, special_max=24, special_col="mega_ball",
-    special_name="Mega Ball", ticket_price=5,
-    tiers=[Tier("5+0", 5, False, 1_000_000), Tier("4+MB", 4, True, 10_000),
-           Tier("4+0", 4, False, 500), Tier("3+MB", 3, True, 200),
-           Tier("3+0", 3, False, 10), Tier("2+MB", 2, True, 10),
-           Tier("1+MB", 1, True, 7), Tier("0+MB", 0, True, 5)],
-)
-PB_CFG = GameConfig(
-    name="Powerball", csv_path=str(HERE / "powerball_draw_history_validated.csv"),
-    white_max=69, white_count=5, special_max=26, special_col="powerball",
-    special_name="Powerball", ticket_price=2,
-    tiers=[Tier("5+0", 5, False, 1_000_000), Tier("4+PB", 4, True, 50_000),
-           Tier("4+0", 4, False, 100), Tier("3+PB", 3, True, 100),
-           Tier("3+0", 3, False, 7), Tier("2+PB", 2, True, 7),
-           Tier("1+PB", 1, True, 4), Tier("0+PB", 0, True, 4)],
-)
-MM_ERA_START = date(2025, 4, 8)
-PB_ERA_START = date(2015, 10, 7)
 VALIDATION_DATE = "2026-09-07"  # date of the one-time 120-minute deep-search run
+PICKS_LOG_PATH = HERE / "picks_log.csv"
+
+
+def load_picks_for_drawing(game_name, drawing_date):
+    """Read this drawing's already-generated picks from picks_log.csv - never
+    regenerates them, so the same drawing always shows the same numbers."""
+    if not PICKS_LOG_PATH.exists():
+        raise RuntimeError(f"{PICKS_LOG_PATH} not found - run update_picks_log.py first.")
+    picks = {}
+    with open(PICKS_LOG_PATH, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row["game"] == game_name and row["drawing_date"] == str(drawing_date):
+                whites = tuple(int(row[f"n{i}"]) for i in range(1, 6))
+                picks[row["strategy"]] = (whites, int(row["special"]))
+    if not picks:
+        raise RuntimeError(
+            f"No picks logged for {game_name} drawing {drawing_date} - "
+            f"run update_picks_log.py first."
+        )
+    return picks
+
+
+def format_track_record(t, special_name):
+    if t["n"] == 0:
+        return "No drawings resolved yet — check back after the next drawing."
+    win_rate = t["hits"] / t["n"] * 100
+    line = (f"{t['n']} picks tracked across resolved drawings · {t['hits']} hit a prize tier "
+            f"({win_rate:.1f}%) · ${t['cost']:,} hypothetically spent, ${t['prize']:,} hypothetically won "
+            f"(net ${t['prize']-t['cost']:,})")
+    if t["best_tier"]:
+        tier, prize, ddate, strategy = t["best_tier"]
+        line += f". Best result so far: {tier} (${prize:,}) on {ddate} via \"{strategy}\"."
+    return line
+
+
+def track_record(game_name, ticket_price):
+    """Aggregate every resolved row for this game into a running tally."""
+    if not PICKS_LOG_PATH.exists():
+        return {"n": 0, "hits": 0, "cost": 0, "prize": 0, "best_tier": None}
+    n = hits = cost = prize = 0
+    best_tier = None
+    best_prize = -1
+    with open(PICKS_LOG_PATH, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row["game"] != game_name or row["status"] != "resolved":
+                continue
+            n += 1
+            cost += ticket_price
+            row_prize = int(row["prize"]) if row["prize"] else 0
+            prize += row_prize
+            if row["tier"]:
+                hits += 1
+                if row_prize > best_prize:
+                    best_prize = row_prize
+                    best_tier = (row["tier"], row_prize, row["drawing_date"], row["strategy"])
+    return {"n": n, "hits": hits, "cost": cost, "prize": prize, "best_tier": best_tier}
 
 
 def load_cache():
@@ -102,8 +141,11 @@ Jackpot: {mm_jackpot} annuity / {mm_cash} cash
 EV per $5 ticket: {mm_ev}  (RTP {mm_rtp})
 Last drawing ({mm_last_date}): {mm_last_balls}
 
-10 combos for the next drawing (one per tested strategy):
+10 combos for the next drawing (one per tested strategy - locked in once generated,
+never regenerated, so these are the exact numbers being tracked against the result):
 {mm_combo_lines}
+
+Track record so far: {mm_track_record}
 
 POWERBALL
 Next drawing: {pb_next_draw}
@@ -111,15 +153,20 @@ Jackpot: {pb_jackpot} annuity / {pb_cash} cash
 EV per $2 ticket: {pb_ev}  (RTP {pb_rtp})
 Last drawing ({pb_last_date}): {pb_last_balls}
 
-10 combos for the next drawing (one per tested strategy):
+10 combos for the next drawing (one per tested strategy - locked in once generated,
+never regenerated, so these are the exact numbers being tracked against the result):
 {pb_combo_lines}
+
+Track record so far: {pb_track_record}
 
 ---
 Straight talk: a 120-minute, million-plus-trial validation run found that NONE of these
 strategies beat plain random number selection on a fair lottery draw - mathematically
 expected, and confirmed empirically. These 10 combos are provided for variety/entertainment
 only; every one of them has identical odds to any other 5-number pick. This is not a tip,
-a prediction, or advice to play.
+a prediction, or advice to play. The track record above is tracked for transparency only -
+resolved outcomes are never fed back into how future picks are generated, because on an
+independent random draw there is nothing real to learn from a past hit or miss.
 
 Full dashboard (live, refreshed daily): {dashboard_url}
 """
@@ -136,6 +183,7 @@ def build_email_body(values, mm_picks, pb_picks):
         mm_last_date=values["__MM_LAST_DRAW_DATE__"],
         mm_last_balls=values["_MM_LAST_DRAW_PLAIN"],
         mm_combo_lines=combos_text(mm_picks, "Mega Ball"),
+        mm_track_record=values["__MM_TRACK_RECORD__"],
         pb_next_draw=values["__PB_NEXT_DRAW__"],
         pb_jackpot=values["__PB_JACKPOT__"],
         pb_cash=values["__PB_CASH__"],
@@ -144,6 +192,7 @@ def build_email_body(values, mm_picks, pb_picks):
         pb_last_date=values["__PB_LAST_DRAW_DATE__"],
         pb_last_balls=values["_PB_LAST_DRAW_PLAIN"],
         pb_combo_lines=combos_text(pb_picks, "Powerball"),
+        pb_track_record=values["__PB_TRACK_RECORD__"],
         dashboard_url=DASHBOARD_URL,
     )
 
@@ -166,10 +215,11 @@ def main():
     pb_next = pb.next_draw_date(pb_last["date"])
     pb_last_date_obj = datetime.strptime(pb_last["date"], "%Y-%m-%d")
 
-    mm_draws = load_draws(MM_CFG, since=MM_ERA_START)
-    pb_draws = load_draws(PB_CFG, since=PB_ERA_START)
-    mm_picks = next_draw_picks(MM_CFG, mm_draws, seed=None)
-    pb_picks = next_draw_picks(PB_CFG, pb_draws, seed=None)
+    mm_picks = load_picks_for_drawing(MM_CFG.name, mm_next)
+    pb_picks = load_picks_for_drawing(PB_CFG.name, pb_next)
+
+    mm_track = track_record(MM_CFG.name, MM_CFG.ticket_price)
+    pb_track = track_record(PB_CFG.name, PB_CFG.ticket_price)
 
     mm_last_plain = " ".join(f"{n:02d}" for n in mm_info["last_draw_numbers"]) + f"  +  MB {mm_info['last_draw_mega_ball']:02d}"
     pb_last_plain = " ".join(f"{n:02d}" for n in pb_last["whites"]) + f"  +  PB {pb_last['powerball']:02d}"
@@ -196,6 +246,9 @@ def main():
 
         "__VALIDATION_DATE__": VALIDATION_DATE,
         "__REFRESH_DATE__": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+
+        "__MM_TRACK_RECORD__": format_track_record(mm_track, "Mega Ball"),
+        "__PB_TRACK_RECORD__": format_track_record(pb_track, "Powerball"),
 
         "_MM_LAST_DRAW_PLAIN": mm_last_plain,
         "_PB_LAST_DRAW_PLAIN": pb_last_plain,
