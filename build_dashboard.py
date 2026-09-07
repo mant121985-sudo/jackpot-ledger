@@ -348,6 +348,8 @@ def main():
 
         "__MM_COMBOS_JS__": combos_js(mm_picks),
         "__PB_COMBOS_JS__": combos_js(pb_picks),
+        "__MM_COMBO_DRAWING_DATE__": f"{mm_next.strftime('%a %b')} {mm_next.day}",
+        "__PB_COMBO_DRAWING_DATE__": f"{pb_next.strftime('%a %b')} {pb_next.day}",
 
         "__VALIDATION_DATE__": VALIDATION_DATE,
         "__REFRESH_DATE__": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
