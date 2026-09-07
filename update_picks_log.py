@@ -54,14 +54,18 @@ ADAPTIVE_STRATEGY_NAME = "adaptive feedback (own hit history)"
 LOG_PATH = HERE / "picks_log.csv"
 FIELDS = ["game", "drawing_date", "generated_at", "strategy",
           "n1", "n2", "n3", "n4", "n5", "special",
-          "status", "white_matches", "special_match", "tier", "prize"]
+          "status", "white_matches", "special_match", "tier", "prize",
+          "source_doc_id"]
 
 
 def load_log():
     if not LOG_PATH.exists():
         return []
     with open(LOG_PATH, encoding="utf-8") as f:
-        return list(csv.DictReader(f))
+        rows = list(csv.DictReader(f))
+    for row in rows:
+        row.setdefault("source_doc_id", "")
+    return rows
 
 
 def save_log(rows):
@@ -131,6 +135,7 @@ def ensure_pending(rows, cfg, draws, next_date):
             "strategy": name, "n1": whites[0], "n2": whites[1], "n3": whites[2],
             "n4": whites[3], "n5": whites[4], "special": special,
             "status": "pending", "white_matches": "", "special_match": "", "tier": "", "prize": "",
+            "source_doc_id": "",
         })
     return len(picks)
 

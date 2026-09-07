@@ -267,7 +267,7 @@ only; every one of them has identical odds to any other 5-number pick. This is n
 a prediction, or advice to play. The track record above is tracked for transparency only -
 resolved outcomes are never fed back into how future picks are generated, because on an
 independent random draw there is nothing real to learn from a past hit or miss.
-
+{new_feedback_section}
 Full dashboard (live, refreshed daily): {dashboard_url}
 """
 
@@ -295,8 +295,19 @@ def build_email_body(values, mm_picks, pb_picks):
         pb_combo_lines=combos_text(pb_picks, "Powerball"),
         pb_track_record=values["__PB_TRACK_RECORD__"],
         pb_last_drawing=values["_PB_LAST_DRAWING_TEXT"],
+        new_feedback_section=values["_NEW_FEEDBACK_SECTION"],
         dashboard_url=DASHBOARD_URL,
     )
+
+
+def format_new_feedback():
+    path = HERE / "new_feedback.txt"
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        return ""
+    return f"\nNew ideas/feedback submitted since last check:\n{text}\n"
 
 
 def main():
@@ -364,11 +375,12 @@ def main():
         "_PB_LAST_DRAW_PLAIN": pb_last_plain,
         "_MM_LAST_DRAWING_TEXT": format_last_drawing_text(mm_last_drawing),
         "_PB_LAST_DRAWING_TEXT": format_last_drawing_text(pb_last_drawing),
+        "_NEW_FEEDBACK_SECTION": format_new_feedback(),
     }
 
     template = (HERE / "dashboard_template.html").read_text(encoding="utf-8")
     for token, val in values.items():
-        if token.startswith("_MM_") or token.startswith("_PB_"):
+        if token.startswith("_") and not token.startswith("__"):
             continue  # email-only values, not template placeholders
         if token not in template:
             raise RuntimeError(f"Template missing expected placeholder: {token}")
