@@ -191,39 +191,6 @@
     background:var(--good-soft); border-color:var(--good); color:var(--good); font-weight:700;
   }
   .ball.special.matched{background:var(--good); border-color:var(--good); color:#fff;}
-
-  /* ---- submission form ---- */
-  .submit-wrap{
-    background:var(--surface); border:1px solid var(--edge); border-radius:14px; padding:20px 22px;
-  }
-  .submit-form{display:flex; flex-direction:column; gap:14px; max-width:560px;}
-  .submit-form label{
-    display:flex; flex-direction:column; gap:6px; font-size:12.5px; color:var(--ink-muted);
-  }
-  .submit-form select, .submit-form input, .submit-form textarea{
-    font-family:var(--font-body); font-size:14px; color:var(--ink); background:var(--surface-raised);
-    border:1px solid var(--edge); border-radius:8px; padding:9px 11px; resize:vertical;
-  }
-  .submit-form select:focus, .submit-form input:focus, .submit-form textarea:focus{
-    outline:2px solid var(--accent); outline-offset:1px;
-  }
-  .submit-form button{
-    align-self:flex-start; font-family:var(--font-body); font-weight:600; font-size:13.5px;
-    color:#fff; background:var(--accent); border:none; border-radius:8px; padding:10px 20px;
-    cursor:pointer;
-  }
-  .submit-form button:disabled{opacity:.5; cursor:default;}
-  .submit-status{font-size:12px; color:var(--ink-faint); min-height:16px; margin:0;}
-  .submit-status.ok{color:var(--good);}
-  .submit-status.err{color:var(--bad);}
-  .recent-list{display:flex; flex-direction:column; gap:8px; margin-top:16px; padding-top:14px; border-top:1px solid var(--edge);}
-  .recent-list:empty{display:none;}
-  .recent-item{
-    display:flex; align-items:flex-start; gap:10px; font-size:12.5px; color:var(--ink-muted);
-  }
-  .recent-item .who{color:var(--ink-faint); font-family:var(--font-mono); font-size:10.5px; white-space:nowrap; padding-top:2px;}
-  .recent-item .what{flex:1;}
-  .recent-item .what .balls{display:inline-flex; gap:4px; vertical-align:middle;}
 </style>
 
 <div class="wrap">
@@ -342,29 +309,6 @@
     </div>
   </section>
 
-  <div class="board-head">
-    <h2>Add Your Own</h2>
-    <div class="note">numbers get tracked for real against the next drawing, same as the 11 strategies above Β· anything else is read as an idea/suggestion</div>
-  </div>
-
-  <section class="submit-wrap">
-    <form id="entry-form" class="submit-form">
-      <label>Game (only matters if you're entering numbers)
-        <select id="entry-game">
-          <option value="Mega Millions">Mega Millions (1-70 + Mega Ball 1-24)</option>
-          <option value="Powerball">Powerball (1-69 + Powerball 1-26)</option>
-        </select>
-      </label>
-      <label>Enter 5 numbers + a special ball (e.g. "4, 15, 27, 41, 63 + 9") to submit a pick, or just write anything else as an idea or comment
-        <textarea id="entry-text" rows="3" maxlength="1000" placeholder="4, 15, 27, 41, 63 + 9   -or-   try weighting picks by draw-day" required></textarea>
-      </label>
-      <label>Name (optional) <input id="entry-name" type="text" maxlength="40" placeholder="shown next to your entry"></label>
-      <button type="submit">Submit</button>
-      <p class="submit-status" id="entry-status"></p>
-    </form>
-    <div id="entry-recent" class="recent-list"></div>
-  </section>
-
   <footer>
     <span>Sources: megamillions.com live feed Β· Texas Lottery Β· NY Open Data (data.ny.gov)</span>
     <span>Figures pre-tax</span>
@@ -465,123 +409,5 @@
     {name:"odd/even balance", v:3.985},
     {name:"sum-range", v:3.936},
   ], 4.021);
-
-  // ---- viewer submissions: one box, auto-detects a pick vs. a comment ----
-  const GAME_RANGES = {
-    "Mega Millions": {whiteMax:70, specialMax:24, whiteCount:5},
-    "Powerball": {whiteMax:69, specialMax:26, whiteCount:5},
-  };
-
-  function tryParsePick(text, whiteMax, specialMax, whiteCount){
-    let whites, special;
-    if (text.indexOf("+") !== -1) {
-      const parts = text.split("+");
-      const whiteNums = (parts[0].match(/\d+/g) || []).map(Number);
-      const specialNums = (parts.slice(1).join(" ").match(/\d+/g) || []).map(Number);
-      if (whiteNums.length === whiteCount && specialNums.length >= 1) {
-        whites = whiteNums; special = specialNums[0];
-      }
-    }
-    if (!whites) {
-      const allNums = (text.match(/\d+/g) || []).map(Number);
-      if (allNums.length === whiteCount + 1) {
-        whites = allNums.slice(0, whiteCount);
-        special = allNums[whiteCount];
-      }
-    }
-    if (!whites) return null;
-    if (new Set(whites).size !== whiteCount) return null;
-    if (!whites.every(n => n >= 1 && n <= whiteMax)) return null;
-    if (!(special >= 1 && special <= specialMax)) return null;
-    return { whites: whites.slice().sort((a,b) => a - b), special };
-  }
-
-  function escapeHtml(s){
-    const d = document.createElement("div");
-    d.textContent = s == null ? "" : String(s);
-    return d.innerHTML;
-  }
-
-  function renderPickItem(v){
-    const balls = (v.whites || []).map(n => `<span class="ball small">${pad(n)}</span>`).join("")
-      + `<span class="ball small special">${pad(v.special)}</span>`;
-    return `<div class="recent-item"><span class="who">${escapeHtml(v.name || "Anonymous")}</span>`
-      + `<span class="what">submitted a ${escapeHtml(v.game || "")} pick <span class="balls">${balls}</span></span></div>`;
-  }
-  function renderFeedbackItem(v){
-    return `<div class="recent-item"><span class="who">${escapeHtml(v.name || "Anonymous")}</span>`
-      + `<span class="what">&ldquo;${escapeHtml(v.text || "")}&rdquo;</span></div>`;
-  }
-
-  async function loadRecentEntries(){
-    if (!window.claude || !window.claude.use) return;
-    const db = await window.claude.use("db");
-    if (!db) return;
-    const recentEl = document.getElementById("entry-recent");
-    if (!recentEl) return;
-    try {
-      const [picksSnap, feedbackSnap] = await Promise.all([
-        db.collection("pick_submissions").orderBy("submitted_at", "desc").limit(5).get(),
-        db.collection("feedback_submissions").orderBy("submitted_at", "desc").limit(5).get(),
-      ]);
-      const items = [];
-      picksSnap.docs.forEach(d => { const v = d.data(); items.push({ t: v.submitted_at || "", html: renderPickItem(v) }); });
-      feedbackSnap.docs.forEach(d => { const v = d.data(); items.push({ t: v.submitted_at || "", html: renderFeedbackItem(v) }); });
-      items.sort((a, b) => b.t.localeCompare(a.t));
-      recentEl.innerHTML = items.slice(0, 8).map(i => i.html).join("");
-    } catch (e) { /* recent list is a nice-to-have, fail silently */ }
-  }
-
-  const entryForm = document.getElementById("entry-form");
-  if (entryForm) {
-    entryForm.addEventListener("submit", async function(e){
-      e.preventDefault();
-      const btn = this.querySelector("button");
-      const statusEl = document.getElementById("entry-status");
-      const game = document.getElementById("entry-game").value;
-      const text = document.getElementById("entry-text").value.trim();
-      const name = document.getElementById("entry-name").value.trim().slice(0, 40);
-      if (!text) return;
-
-      btn.disabled = true;
-      statusEl.textContent = "Submitting...";
-      statusEl.className = "submit-status";
-
-      try {
-        if (!window.claude || !window.claude.use) throw new Error("no-claude");
-        const db = await window.claude.use("db");
-        if (!db) {
-          statusEl.textContent = "Submissions aren't available in this view.";
-          statusEl.className = "submit-status err";
-          btn.disabled = false;
-          return;
-        }
-        const range = GAME_RANGES[game];
-        const parsed = tryParsePick(text, range.whiteMax, range.specialMax, range.whiteCount);
-        if (parsed) {
-          await db.collection("pick_submissions").add({
-            game, whites: parsed.whites, special: parsed.special,
-            name: name || "Anonymous", raw_text: text,
-            submitted_at: new Date().toISOString(),
-          });
-          statusEl.textContent = `Pick submitted for ${game}: ${parsed.whites.join(", ")} + ${parsed.special}. `
-            + `It'll be tracked against the next drawing, same as the 11 strategies above.`;
-        } else {
-          await db.collection("feedback_submissions").add({
-            text, name: name || "Anonymous", submitted_at: new Date().toISOString(),
-          });
-          statusEl.textContent = "Thanks - logged as an idea for review.";
-        }
-        statusEl.className = "submit-status ok";
-        entryForm.reset();
-        loadRecentEntries();
-      } catch (err) {
-        statusEl.textContent = "Something went wrong submitting that - try again.";
-        statusEl.className = "submit-status err";
-      }
-      btn.disabled = false;
-    });
-  }
-  loadRecentEntries();
 })();
 </script>

@@ -2,5 +2,3 @@ __pycache__/
 *.pyc
 dashboard_output.html
 email_body.txt
-submissions_raw.json
-new_feedback.txt
