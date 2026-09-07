@@ -1,0 +1,36 @@
+name: Refresh live lottery data
+
+on:
+  schedule:
+    # 09:40 UTC daily = 5:40 AM ET - well before the Claude routine's 10:00 UTC run,
+    # giving it fresh data to read (this job has real internet access; the routine's
+    # sandbox does not, by design - see build_dashboard.py's docstring).
+    - cron: "40 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch live data and refresh draw histories
+        run: |
+          python refresh_megamillions_history.py
+          python refresh_powerball_history.py
+          python fetch_live_data.py
+
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name "jackpot-ledger-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add megamillions_draw_history_validated.csv powerball_draw_history_validated.csv live_data_cache.json
+          git diff --cached --quiet || git commit -m "Automated daily data refresh"
+          git push

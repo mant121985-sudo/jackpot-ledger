@@ -1,21 +1,25 @@
 """
-Orchestrator for the daily Jackpot Ledger refresh. Pure Python/curl - no LLM calls,
-no tokens spent. Produces dashboard_output.html, a complete, ready-to-publish page
-with every placeholder in dashboard_template.html filled from live data.
+Orchestrator for the daily Jackpot Ledger refresh. Pure local file processing -
+no network calls of its own, so it runs anywhere, including a network-restricted
+sandbox. Produces dashboard_output.html, a complete, ready-to-publish page with
+every placeholder in dashboard_template.html filled from already-fetched data.
+
+This intentionally does NOT hit the network itself. The two draw-history CSVs
+and live_data_cache.json are expected to already be fresh on disk - fetched by
+fetch_live_data.py + refresh_megamillions_history.py + refresh_powerball_history.py,
+which need real internet access and are meant to run somewhere that has it (a
+GitHub Actions workflow in this repo, see .github/workflows/refresh.yml), not
+inside whatever environment runs this script.
 
 Steps:
-  1. Refresh both draw-history CSVs from the two official feeds (cross-validated).
-  2. Pull live jackpot/EV/last-draw data for both games.
-  3. Generate one next-drawing combo per tested strategy, both games.
-  4. Fill dashboard_template.html and write dashboard_output.html.
-
-The calling agent's only remaining job is to publish dashboard_output.html to the
-existing Artifact URL - no data logic should live in that step.
+  1. Load live jackpot/EV/last-draw data from live_data_cache.json.
+  2. Generate one next-drawing combo per tested strategy, both games, from the
+     (already-fresh) draw-history CSVs.
+  3. Fill dashboard_template.html and write dashboard_output.html + email_body.txt.
 
 Run: python build_dashboard.py
 """
 import json
-import subprocess
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -50,12 +54,14 @@ PB_ERA_START = date(2015, 10, 7)
 VALIDATION_DATE = "2026-09-07"  # date of the one-time 120-minute deep-search run
 
 
-def run_refresh():
-    for script in ("refresh_megamillions_history.py", "refresh_powerball_history.py"):
-        result = subprocess.run([sys.executable, str(HERE / script)], capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"{script} failed:\n{result.stdout}\n{result.stderr}")
-        print(result.stdout.strip())
+def load_cache():
+    cache_path = HERE / "live_data_cache.json"
+    if not cache_path.exists():
+        raise RuntimeError(
+            f"{cache_path} not found. This script only reads already-fetched data - "
+            f"run fetch_live_data.py first (it needs real internet access)."
+        )
+    return json.loads(cache_path.read_text(encoding="utf-8"))
 
 
 def money(v):
@@ -143,17 +149,17 @@ def build_email_body(values, mm_picks, pb_picks):
 
 
 def main():
-    run_refresh()
+    cache = load_cache()
+    mm_info = cache["megamillions"]
+    pb_info = cache["powerball"]
+    pb_last = pb_info["last_draw"]
 
-    mm_info = mm.fetch_live_jackpot()
     mm_floor = mm.non_jackpot_ev()
     mm_jp = 1 / mm.TOTAL_COMBOS
     mm_ev_ann = mm_floor + mm_jp * mm_info["next_jackpot_annuity"]
     mm_next = mm.next_draw_date(mm_info["last_draw_date"])
     mm_last_date_obj = datetime.strptime(mm_info["last_draw_date"], "%Y-%m-%d")
 
-    pb_info = pb.fetch_live_jackpot()
-    pb_last = pb.fetch_last_draw()
     pb_floor = pb.non_jackpot_ev()
     pb_jp = 1 / pb.TOTAL_COMBOS
     pb_ev_ann = pb_floor + pb_jp * pb_info["annuity"]

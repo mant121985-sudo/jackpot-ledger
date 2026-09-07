@@ -1,0 +1,32 @@
+{
+  "megamillions": {
+    "last_draw_date": "2026-09-04",
+    "last_draw_numbers": [
+      6,
+      26,
+      34,
+      59,
+      61
+    ],
+    "last_draw_mega_ball": 24,
+    "last_draw_winners": 0,
+    "next_jackpot_annuity": 193000000.0,
+    "next_jackpot_cash": 82800000.0
+  },
+  "powerball": {
+    "draw_date": "09/07/2026",
+    "annuity": 190000000.0,
+    "cash": 81900000.0,
+    "last_draw": {
+      "date": "2026-09-05",
+      "whites": [
+        15,
+        40,
+        47,
+        53,
+        59
+      ],
+      "powerball": 9
+    }
+  }
+}
