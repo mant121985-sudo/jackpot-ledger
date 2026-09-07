@@ -169,18 +169,28 @@
   .results-body .drawing-date{
     font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin:8px 0 4px;
   }
+  .actual-row{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 10px; margin-bottom:6px;
+    background:var(--surface-raised); border:1px solid var(--edge); border-radius:9px;
+  }
+  .actual-row .lbl{font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; margin-right:2px;}
   .result-list{display:flex; flex-direction:column;}
   .result-row{
-    display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:10px;
-    padding:7px 0; border-top:1px solid var(--edge); font-size:12px;
+    display:flex; flex-direction:column; gap:5px;
+    padding:8px 0; border-top:1px solid var(--edge); font-size:12px;
   }
+  .result-row .top-line{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
   .result-row .strategy{color:var(--ink-muted);}
-  .result-row .matches{font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); white-space:nowrap;}
+  .result-row .pick-balls{display:flex; gap:4px; flex-wrap:wrap;}
   .result-row .outcome{
-    font-family:var(--font-mono); font-weight:600; font-size:12px; text-align:right; white-space:nowrap;
+    font-family:var(--font-mono); font-weight:600; font-size:12px; text-align:right; white-space:nowrap; flex:none;
   }
   .result-row.miss .outcome{color:var(--ink-faint); font-weight:400;}
   .result-row.hit .outcome{color:var(--good);}
+  .ball.matched{
+    background:var(--good-soft); border-color:var(--good); color:var(--good); font-weight:700;
+  }
+  .ball.special.matched{background:var(--good); border-color:var(--good); color:#fff;}
 </style>
 
 <div class="wrap">

@@ -33,6 +33,7 @@ sys.path.insert(0, str(HERE))
 import megamillions_live_ev as mm
 import powerball_live_ev as pb
 from game_configs import MM_CFG, PB_CFG, MM_ERA_START, PB_ERA_START
+from lottery_common import load_draws
 
 VALIDATION_DATE = "2026-09-07"  # date of the one-time 120-minute deep-search run
 PICKS_LOG_PATH = HERE / "picks_log.csv"
@@ -93,23 +94,45 @@ def track_record(game_name, ticket_price):
     return {"n": n, "hits": hits, "cost": cost, "prize": prize, "best_tier": best_tier}
 
 
-def last_drawing_results(game_name):
+def last_drawing_results(cfg):
     """Per-strategy breakdown of exactly what each combo would have won (or
-    not) on the most recently RESOLVED drawing for this game - the concrete,
-    per-drawing complement to track_record()'s running aggregate."""
+    not) on the most recently RESOLVED drawing for this game, WITH the actual
+    winning numbers alongside each pick and the specific matched numbers
+    marked - not just a match count, so it's a real side-by-side."""
     if not PICKS_LOG_PATH.exists():
         return None
     rows = []
     with open(PICKS_LOG_PATH, encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            if row["game"] == game_name and row["status"] == "resolved":
+            if row["game"] == cfg.name and row["status"] == "resolved":
                 rows.append(row)
     if not rows:
         return None
-    latest_date = max(r["drawing_date"] for r in rows)
-    latest_rows = [r for r in rows if r["drawing_date"] == latest_date]
+    latest_date_str = max(r["drawing_date"] for r in rows)
+    latest_rows = [r for r in rows if r["drawing_date"] == latest_date_str]
     latest_rows.sort(key=lambda r: -(int(r["prize"]) if r["prize"] else 0))
-    return {"drawing_date": latest_date, "rows": latest_rows}
+
+    latest_date = date.fromisoformat(latest_date_str)
+    all_draws = {d: (w, s) for d, w, s in load_draws(cfg)}
+    actual_whites, actual_special = all_draws[latest_date]
+
+    enriched = []
+    for r in latest_rows:
+        pick_whites = tuple(int(r[f"n{i}"]) for i in range(1, 6))
+        pick_special = int(r["special"])
+        enriched.append({
+            **r,
+            "pick_whites": pick_whites,
+            "pick_special": pick_special,
+            "matched_whites": set(pick_whites) & set(actual_whites),
+            "special_hit": pick_special == actual_special,
+        })
+    return {
+        "drawing_date": latest_date_str,
+        "actual_whites": actual_whites,
+        "actual_special": actual_special,
+        "rows": enriched,
+    }
 
 
 def load_cache():
@@ -150,18 +173,35 @@ def combos_text(picks, special_name):
     return "\n".join(lines)
 
 
+def pick_balls_html(whites, special, matched_whites, special_hit):
+    spans = "".join(
+        f'<span class="ball small{" matched" if n in matched_whites else ""}">{n:02d}</span>'
+        for n in sorted(whites)
+    )
+    spans += f'<span class="ball small special{" matched" if special_hit else ""}">{special:02d}</span>'
+    return spans
+
+
 def format_last_drawing_html(result):
     if result is None:
         return '<p class="none">No drawings resolved yet.</p>'
-    lines = [f'<p class="drawing-date">Drawing: {result["drawing_date"]}</p>', '<div class="result-list">']
+    actual_html = balls_html(sorted(result["actual_whites"]), result["actual_special"])
+    lines = [
+        f'<p class="drawing-date">Drawing: {result["drawing_date"]}</p>',
+        f'<div class="actual-row"><span class="lbl">Actual winning numbers</span>{actual_html}</div>',
+        '<div class="result-list">',
+    ]
     for row in result["rows"]:
         prize = int(row["prize"]) if row["prize"] else 0
         outcome = f'${prize:,} ({row["tier"]})' if row["tier"] else "no prize"
         cls = "hit" if row["tier"] else "miss"
+        pick_html = pick_balls_html(row["pick_whites"], row["pick_special"], row["matched_whites"], row["special_hit"])
         lines.append(
-            f'<div class="result-row {cls}"><span class="strategy">{row["strategy"]}</span>'
-            f'<span class="matches">{row["white_matches"]} white + {"yes" if row["special_match"]=="1" else "no"} special</span>'
+            f'<div class="result-row {cls}">'
+            f'<div class="top-line"><span class="strategy">{row["strategy"]}</span>'
             f'<span class="outcome">{outcome}</span></div>'
+            f'<div class="pick-balls">{pick_html}</div>'
+            f'</div>'
         )
     lines.append("</div>")
     return "\n".join(lines)
@@ -170,12 +210,18 @@ def format_last_drawing_html(result):
 def format_last_drawing_text(result):
     if result is None:
         return "  No drawings resolved yet."
-    lines = [f'  Drawing: {result["drawing_date"]}']
+    actual_str = " ".join(f"{n:02d}" for n in sorted(result["actual_whites"])) + f"  +  {result['actual_special']:02d}"
+    lines = [f'  Drawing: {result["drawing_date"]}', f'  Actual winning numbers: {actual_str}', ""]
     for row in result["rows"]:
         prize = int(row["prize"]) if row["prize"] else 0
         outcome = f'WON ${prize:,} ({row["tier"]})' if row["tier"] else "no prize"
-        lines.append(f'    {row["strategy"]:<32} {row["white_matches"]} white + '
-                      f'{"yes" if row["special_match"]=="1" else "no":<3} special -> {outcome}')
+        pick_str = " ".join(
+            (f"*{n:02d}*" if n in row["matched_whites"] else f"{n:02d}")
+            for n in sorted(row["pick_whites"])
+        )
+        special_str = f"*{row['pick_special']:02d}*" if row["special_hit"] else f"{row['pick_special']:02d}"
+        lines.append(f'    {row["strategy"]:<32} {pick_str}  +  {special_str}  -> {outcome}')
+    lines.append("    (* = matched the actual winning number)")
     return "\n".join(lines)
 
 
@@ -277,8 +323,8 @@ def main():
     mm_track = track_record(MM_CFG.name, MM_CFG.ticket_price)
     pb_track = track_record(PB_CFG.name, PB_CFG.ticket_price)
 
-    mm_last_drawing = last_drawing_results(MM_CFG.name)
-    pb_last_drawing = last_drawing_results(PB_CFG.name)
+    mm_last_drawing = last_drawing_results(MM_CFG)
+    pb_last_drawing = last_drawing_results(PB_CFG)
 
     mm_last_plain = " ".join(f"{n:02d}" for n in mm_info["last_draw_numbers"]) + f"  +  MB {mm_info['last_draw_mega_ball']:02d}"
     pb_last_plain = " ".join(f"{n:02d}" for n in pb_last["whites"]) + f"  +  PB {pb_last['powerball']:02d}"
