@@ -1,17 +1,17 @@
 {
   "megamillions": {
-    "last_draw_date": "2026-10-09",
+    "last_draw_date": "2026-10-13",
     "last_draw_numbers": [
-      2,
-      7,
-      16,
-      63,
-      70
+      11,
+      12,
+      15,
+      40,
+      66
     ],
-    "last_draw_mega_ball": 8,
+    "last_draw_mega_ball": 17,
     "last_draw_winners": 0,
-    "next_jackpot_annuity": 385000000.0,
-    "next_jackpot_cash": 154800000.0
+    "next_jackpot_annuity": 403000000.0,
+    "next_jackpot_cash": 162100000.0
   },
   "powerball": {
     "draw_date": "10/14/2026",
