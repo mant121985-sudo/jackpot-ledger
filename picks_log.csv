@@ -406,17 +406,17 @@ Powerball,2026-10-26,2026-10-25T13:53:55+00:00,high/low balance,8,26,44,48,60,5,
 Powerball,2026-10-26,2026-10-25T13:53:55+00:00,no consecutive numbers,20,27,29,31,61,25,resolved,0,0,,0
 Powerball,2026-10-26,2026-10-25T13:53:55+00:00,pair co-occurrence,21,28,32,61,64,14,resolved,0,0,,0
 Powerball,2026-10-26,2026-10-25T13:53:55+00:00,adaptive feedback (own hit history),8,15,40,51,55,21,resolved,0,0,,0
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,random (quick-pick baseline),5,6,19,28,64,9,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,hot numbers (full history),21,28,32,61,64,14,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,hot numbers (last 26 draws),15,19,21,42,55,14,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,cold / overdue numbers,13,26,34,46,49,16,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,frequency-weighted,1,16,42,46,68,20,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,sum-range targeting,12,27,28,46,60,20,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,odd/even balance,8,19,20,45,69,25,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,high/low balance,9,15,43,54,63,16,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,no consecutive numbers,4,24,39,46,68,5,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,pair co-occurrence,21,28,32,61,64,14,pending,,,,
-Powerball,2026-10-28,2026-10-27T15:31:24+00:00,adaptive feedback (own hit history),2,15,34,39,52,24,pending,,,,
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,random (quick-pick baseline),5,6,19,28,64,9,resolved,0,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,hot numbers (full history),21,28,32,61,64,14,resolved,0,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,hot numbers (last 26 draws),15,19,21,42,55,14,resolved,0,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,cold / overdue numbers,13,26,34,46,49,16,resolved,1,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,frequency-weighted,1,16,42,46,68,20,resolved,1,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,sum-range targeting,12,27,28,46,60,20,resolved,1,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,odd/even balance,8,19,20,45,69,25,resolved,0,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,high/low balance,9,15,43,54,63,16,resolved,0,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,no consecutive numbers,4,24,39,46,68,5,resolved,0,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,pair co-occurrence,21,28,32,61,64,14,resolved,0,0,,0
+Powerball,2026-10-28,2026-10-27T15:31:24+00:00,adaptive feedback (own hit history),2,15,34,39,52,24,resolved,0,0,,0
 Mega Millions,2026-10-30,2026-10-28T16:15:17+00:00,random (quick-pick baseline),5,29,43,53,70,24,pending,,,,
 Mega Millions,2026-10-30,2026-10-28T16:15:17+00:00,hot numbers (full history),17,40,42,49,63,12,pending,,,,
 Mega Millions,2026-10-30,2026-10-28T16:15:17+00:00,hot numbers (last 26 draws),26,30,51,57,68,17,pending,,,,
@@ -428,3 +428,14 @@ Mega Millions,2026-10-30,2026-10-28T16:15:17+00:00,high/low balance,10,13,32,62,
 Mega Millions,2026-10-30,2026-10-28T16:15:17+00:00,no consecutive numbers,7,12,20,31,64,3,pending,,,,
 Mega Millions,2026-10-30,2026-10-28T16:15:17+00:00,pair co-occurrence,17,40,42,49,63,12,pending,,,,
 Mega Millions,2026-10-30,2026-10-28T16:15:17+00:00,adaptive feedback (own hit history),13,29,35,41,56,9,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,random (quick-pick baseline),10,31,40,49,66,2,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,hot numbers (full history),21,28,32,61,64,14,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,hot numbers (last 26 draws),15,19,21,42,55,14,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,cold / overdue numbers,13,26,34,46,49,16,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,frequency-weighted,8,16,33,44,55,23,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,sum-range targeting,14,24,31,47,49,2,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,odd/even balance,43,47,48,50,59,21,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,high/low balance,6,10,37,49,56,26,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,no consecutive numbers,11,22,26,32,66,3,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,pair co-occurrence,21,28,32,61,64,14,pending,,,,
+Powerball,2026-10-31,2026-10-29T16:24:02+00:00,adaptive feedback (own hit history),3,32,48,52,68,18,pending,,,,
