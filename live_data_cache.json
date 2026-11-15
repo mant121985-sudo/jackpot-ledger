@@ -14,19 +14,19 @@
     "next_jackpot_cash": 246900000.0
   },
   "powerball": {
-    "draw_date": "11/14/2026",
-    "annuity": 63000000.0,
-    "cash": 27100000.0,
+    "draw_date": "11/16/2026",
+    "annuity": 76000000.0,
+    "cash": 31800000.0,
     "last_draw": {
-      "date": "2026-11-11",
+      "date": "2026-11-14",
       "whites": [
-        8,
-        42,
-        45,
+        9,
+        44,
+        49,
         51,
-        57
+        68
       ],
-      "powerball": 17
+      "powerball": 4
     }
   }
 }
